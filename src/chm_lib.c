@@ -742,12 +742,10 @@ static Int64 _chm_fetch_bytes(struct chmFile *h,
     return readLen;
 }
 
-/* open an ITS archive */
-#ifdef PPC_BSTR
-/* RWE 6/12/2003 */
-struct chmFile *chm_open(BSTR filename)
+#ifdef WIN32
+struct chmFile *chm_open_fd(HANDLE fd)
 #else
-struct chmFile *chm_open(const char *filename)
+struct chmFile *chm_open_fd(int fd)
 #endif
 {
     unsigned char               sbuffer[256];
@@ -766,6 +764,7 @@ struct chmFile *chm_open(const char *filename)
     newHandle = (struct chmFile *)malloc(sizeof(struct chmFile));
     if (newHandle == NULL)
         return NULL;
+
     newHandle->fd = CHM_NULL_FD;
     newHandle->lzx_state = NULL;
     newHandle->cache_blocks = NULL;
@@ -773,39 +772,7 @@ struct chmFile *chm_open(const char *filename)
     newHandle->cache_num_blocks = 0;
 
     /* open file */
-#ifdef WIN32
-#ifdef PPC_BSTR
-    if ((newHandle->fd=CreateFile(filename,
-                                  GENERIC_READ,
-                                  FILE_SHARE_READ,
-                                  NULL,
-                                  OPEN_EXISTING,
-                                  FILE_ATTRIBUTE_NORMAL,
-                                  NULL)) == CHM_NULL_FD)
-    {
-        free(newHandle);
-        return NULL;
-    }
-#else
-    if ((newHandle->fd=CreateFileA(filename,
-                                   GENERIC_READ,
-                                   0,
-                                   NULL,
-                                   OPEN_EXISTING,
-                                   FILE_ATTRIBUTE_NORMAL,
-                                   NULL)) == CHM_NULL_FD)
-    {
-        free(newHandle);
-        return NULL;
-    }
-#endif
-#else
-    if ((newHandle->fd=open(filename, O_RDONLY)) == CHM_NULL_FD)
-    {
-        free(newHandle);
-        return NULL;
-    }
-#endif
+    newHandle->fd = fd;
 
     /* initialize mutexes, if needed */
 #ifdef CHM_MT
@@ -960,6 +927,38 @@ struct chmFile *chm_open(const char *filename)
                   CHM_MAX_BLOCKS_CACHED);
 
     return newHandle;
+}
+
+/* open an ITS archive */
+#ifdef PPC_BSTR
+/* RWE 6/12/2003 */
+struct chmFile *chm_open(BSTR filename)
+#else
+struct chmFile *chm_open(const char *filename)
+#endif
+{
+    /* open file */
+#ifdef WIN32
+#ifdef PPC_BSTR
+    return newHandle = chm_open_fd(CreateFile(filename,
+                                  GENERIC_READ,
+                                  FILE_SHARE_READ,
+                                  NULL,
+                                  OPEN_EXISTING,
+                                  FILE_ATTRIBUTE_NORMAL,
+                                  NULL));
+#else
+    return chm_open_fd(CreateFileA(filename,
+                                   GENERIC_READ,
+                                   0,
+                                   NULL,
+                                   OPEN_EXISTING,
+                                   FILE_ATTRIBUTE_NORMAL,
+                                   NULL));
+#endif
+#else
+    return chm_open_fd(open(filename, O_RDONLY));
+#endif
 }
 
 /* close an ITS archive */

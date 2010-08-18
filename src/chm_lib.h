@@ -82,6 +82,12 @@ struct chmUnitInfo
     char               path[CHM_MAX_PATHLEN+1];
 };
 
+#ifdef WIN32
+struct chmFile *chm_open_fd(HANDLE fd);
+#else
+struct chmFile *chm_open_fd(int fd);
+#endif
+
 /* open an ITS archive */
 #ifdef PPC_BSTR
 /* RWE 6/12/2003 */
